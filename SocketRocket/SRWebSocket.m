@@ -159,6 +159,7 @@ NSString *const SRHTTPResponseErrorKey = @"HTTPResponseStatusCode";
     assert(request.URL);
     _url = request.URL;
     _urlRequest = request;
+    _pinnedCertFound = NO;
     _allowsUntrustedSSLCertificates = allowsUntrustedSSLCertificates;
 
     _requestedProtocols = [protocols copy];
@@ -407,14 +408,9 @@ NSString *const SRHTTPResponseErrorKey = @"HTTPResponseStatusCode";
 
         NSMutableDictionary<NSString *, NSNumber *> *sslOptions = [NSMutableDictionary dictionary];
 
-        // If we're using pinned certs, don't validate the certificate chain
-        if ([_urlRequest SR_SSLPinnedCertificates].count) {
-            sslOptions[(__bridge NSString *)kCFStreamSSLValidatesCertificateChain] = @NO;
-        }
-
-#if DEBUG
+        // Enforce TLS 1.2
+        [_outputStream setProperty:(__bridge id)CFSTR("kCFStreamSocketSecurityLevelTLSv1_2") forKey:(__bridge id)kCFStreamPropertySocketSecurityLevel];
         self.allowsUntrustedSSLCertificates = YES;
-#endif
 
         if (self.allowsUntrustedSSLCertificates) {
             sslOptions[(__bridge NSString *)kCFStreamSSLValidatesCertificateChain] = @NO;
@@ -1391,40 +1387,20 @@ static const size_t SRFrameHeaderOverhead = 32;
 
     if (_secure && !_pinnedCertFound && (eventCode == NSStreamEventHasBytesAvailable || eventCode == NSStreamEventHasSpaceAvailable)) {
 
-        NSArray *sslCerts = [_urlRequest SR_SSLPinnedCertificates];
-        if (sslCerts) {
-            SecTrustRef secTrust = (__bridge SecTrustRef)[aStream propertyForKey:(__bridge id)kCFStreamPropertySSLPeerTrust];
-            if (secTrust) {
-                NSInteger numCerts = SecTrustGetCertificateCount(secTrust);
-                for (NSInteger i = 0; i < numCerts && !_pinnedCertFound; i++) {
-                    SecCertificateRef cert = SecTrustGetCertificateAtIndex(secTrust, i);
-                    NSData *certData = CFBridgingRelease(SecCertificateCopyData(cert));
-
-                    for (id ref in sslCerts) {
-                        SecCertificateRef trustedCert = (__bridge SecCertificateRef)ref;
-                        NSData *trustedCertData = CFBridgingRelease(SecCertificateCopyData(trustedCert));
-
-                        if ([trustedCertData isEqualToData:certData]) {
-                            _pinnedCertFound = YES;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!_pinnedCertFound) {
-                dispatch_async(_workQueue, ^{
-                    NSError *error = SRErrorWithDomainCodeDescription(NSURLErrorDomain, NSURLErrorClientCertificateRejected,
-                                                                      @"Invalid server certificate.");
-                    [weakSelf _failWithError:error];
-                });
-                return;
-            } else if (aStream == _outputStream) {
-                dispatch_async(_workQueue, ^{
-                    [self didConnect];
-                });
-            }
+        id<CertificateVerifier> verifier = [_urlRequest securityPolicy];
+        if (!verifier) {
+            @throw [NSException exceptionWithName:@"Can't verify WebSocket trust." reason:@"Missing security policy." userInfo:nil];
         }
+
+        SecTrustRef secTrust = (__bridge SecTrustRef)[aStream propertyForKey:(__bridge id)kCFStreamPropertySSLPeerTrust];
+        if (! (secTrust && [verifier evaluateServerTrust:secTrust forDomain:_urlRequest.URL.host])) {
+            dispatch_async(_workQueue, ^{
+                [weakSelf _failWithError:[NSError errorWithDomain:SRWebSocketErrorDomain code:23556 userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:@"Invalid server cert"] forKey:NSLocalizedDescriptionKey]]];
+            });
+            return;
+        }
+
+        _pinnedCertFound = YES;
     }
 
     dispatch_async(_workQueue, ^{
@@ -1442,11 +1418,6 @@ static const size_t SRFrameHeaderOverhead = 32;
             }
             assert(_readBuffer);
 
-            // didConnect fires after certificate verification if we're using pinned certificates.
-            BOOL usingPinnedCerts = [[_urlRequest SR_SSLPinnedCertificates] count] > 0;
-            if ((!_secure || !usingPinnedCerts) && self.readyState == SR_CONNECTING && aStream == _inputStream) {
-                [self didConnect];
-            }
             [self _pumpWriting];
             [self _pumpScanner];
             break;

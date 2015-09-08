@@ -13,21 +13,22 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@protocol CertificateVerifier <NSObject>
+
+- (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
+                  forDomain:(NSString*)domain;
+
+@end
+
 @interface NSURLRequest (SRWebSocket)
 
-/**
- An array of pinned `SecCertificateRef` SSL certificates that `SRWebSocket` will use for validation.
- */
-@property (nullable, nonatomic, strong, readonly) NSArray *SR_SSLPinnedCertificates;
+@property (nonatomic, retain, readonly) id<CertificateVerifier> securityPolicy;
 
 @end
 
 @interface NSMutableURLRequest (SRWebSocket)
 
-/**
- An array of pinned `SecCertificateRef` SSL certificates that `SRWebSocket` will use for validation.
- */
-@property (nullable, nonatomic, strong) NSArray *SR_SSLPinnedCertificates;
+@property (nonatomic, retain) id<CertificateVerifier> securityPolicy;
 
 @end
 

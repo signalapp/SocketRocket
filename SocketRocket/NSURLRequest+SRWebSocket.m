@@ -10,28 +10,32 @@
 //
 
 #import "NSURLRequest+SRWebSocket.h"
+#import <objc/runtime.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @implementation NSURLRequest (SRWebSocket)
 
-- (nullable NSArray *)SR_SSLPinnedCertificates
+static id certificateVerifier;
+
+- (id<CertificateVerifier>)securityPolicy;
 {
-    return [NSURLProtocol propertyForKey:@"SR_SSLPinnedCertificates" inRequest:self];
+    return objc_getAssociatedObject(self, &certificateVerifier);
 }
 
 @end
 
 @implementation NSMutableURLRequest (SRWebSocket)
 
-- (nullable NSArray *)SR_SSLPinnedCertificates
+- (void)setSecurityPolicy:(id<CertificateVerifier>)securityPolicy
 {
-    return [NSURLProtocol propertyForKey:@"SR_SSLPinnedCertificates" inRequest:self];
-}
+    if (![securityPolicy respondsToSelector:@selector(evaluateServerTrust:forDomain:)]) {
+        @throw [NSException exceptionWithName:@"Assigning security policy failed."
+                                       reason:@"Trying to assign a security policy that doesn't respond to required selector"
+                                     userInfo:nil];
+    }
 
-- (void)setSR_SSLPinnedCertificates:(nullable NSArray *)SR_SSLPinnedCertificates
-{
-    [NSURLProtocol setProperty:SR_SSLPinnedCertificates forKey:@"SR_SSLPinnedCertificates" inRequest:self];
+    objc_setAssociatedObject(self, &certificateVerifier, securityPolicy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 @end
