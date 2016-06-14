@@ -10,20 +10,10 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "SRSecurityPolicy.h"
 
-NS_ASSUME_NONNULL_BEGIN
+@protocol SRSecurityPolicy <NSObject>
 
-@interface NSURLRequest (SRWebSocket)
-
-@property (nonatomic, retain, readonly) id<SRSecurityPolicy> SR_securityPolicy;
+- (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
+                  forDomain:(NSString*)domain;
 
 @end
-
-@interface NSMutableURLRequest (SRWebSocket)
-
-@property (nonatomic, retain) id<SRSecurityPolicy> SR_securityPolicy;
-
-@end
-
-NS_ASSUME_NONNULL_END

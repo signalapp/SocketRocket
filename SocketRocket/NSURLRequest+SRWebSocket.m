@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 static id certificateVerifier;
 
-- (id<CertificateVerifier>)SR_securityPolicy;
+- (id<SRSecurityPolicy>)SR_securityPolicy;
 {
     return objc_getAssociatedObject(self, &certificateVerifier);
 }
@@ -27,7 +27,7 @@ static id certificateVerifier;
 
 @implementation NSMutableURLRequest (SRWebSocket)
 
-- (void)setSR_securityPolicy:(id<CertificateVerifier>)securityPolicy
+- (void)setSR_securityPolicy:(id<SRSecurityPolicy>)securityPolicy
 {
     if (![securityPolicy respondsToSelector:@selector(evaluateServerTrust:forDomain:)]) {
         @throw [NSException exceptionWithName:@"Assigning security policy failed."
