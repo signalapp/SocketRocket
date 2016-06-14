@@ -410,7 +410,7 @@ NSString *const SRHTTPResponseErrorKey = @"HTTPResponseStatusCode";
 
         // Enforce TLS 1.2
         [_outputStream setProperty:(__bridge id)CFSTR("kCFStreamSocketSecurityLevelTLSv1_2") forKey:(__bridge id)kCFStreamPropertySocketSecurityLevel];
-        self.allowsUntrustedSSLCertificates = YES;
+        self.allowsUntrustedSSLCertificates = YES; // hard coded for OWS which always pins certs.
 
         if (self.allowsUntrustedSSLCertificates) {
             sslOptions[(__bridge NSString *)kCFStreamSSLValidatesCertificateChain] = @NO;
