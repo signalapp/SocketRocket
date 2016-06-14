@@ -1395,7 +1395,9 @@ static const size_t SRFrameHeaderOverhead = 32;
         SecTrustRef secTrust = (__bridge SecTrustRef)[aStream propertyForKey:(__bridge id)kCFStreamPropertySSLPeerTrust];
         if (! (secTrust && [verifier evaluateServerTrust:secTrust forDomain:_urlRequest.URL.host])) {
             dispatch_async(_workQueue, ^{
-                [weakSelf _failWithError:[NSError errorWithDomain:SRWebSocketErrorDomain code:23556 userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:@"Invalid server cert"] forKey:NSLocalizedDescriptionKey]]];
+                NSError *error = SRErrorWithDomainCodeDescription(NSURLErrorDomain, NSURLErrorClientCertificateRejected,
+                                                                  @"Invalid server certificate.");
+                [weakSelf _failWithError:error];
             });
             return;
         }
@@ -1418,6 +1420,12 @@ static const size_t SRFrameHeaderOverhead = 32;
             }
             assert(_readBuffer);
 
+            // didConnect fires after certificate verification if we're using pinned certificates.
+            // BOOL usingPinnedCerts = [[_urlRequest SR_SSLPinnedCertificates] count] > 0;
+            BOOL usingPinnedCerts = YES; // hard coded for OWS which always pins certs.
+            if ((!_secure || !usingPinnedCerts) && self.readyState == SR_CONNECTING && aStream == _inputStream) {
+                [self didConnect];
+            }
             [self _pumpWriting];
             [self _pumpScanner];
             break;
