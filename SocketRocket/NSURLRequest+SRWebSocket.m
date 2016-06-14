@@ -10,17 +10,16 @@
 //
 
 #import "NSURLRequest+SRWebSocket.h"
-#import <objc/runtime.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@implementation NSURLRequest (SRWebSocket)
+NSString * const kSRSecurityPolicy = @"SRSecurityPolicy";
 
-static id certificateVerifier;
+@implementation NSURLRequest (SRWebSocket)
 
 - (nullable id<SRSecurityPolicy>)SR_securityPolicy;
 {
-    return objc_getAssociatedObject(self, &certificateVerifier);
+    return [NSURLProtocol propertyForKey:kSRSecurityPolicy inRequest:self];
 }
 
 @end
@@ -34,8 +33,7 @@ static id certificateVerifier;
                                        reason:@"Trying to assign a security policy that doesn't respond to required selector"
                                      userInfo:nil];
     }
-
-    objc_setAssociatedObject(self, &certificateVerifier, securityPolicy, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [NSURLProtocol setProperty:securityPolicy forKey:kSRSecurityPolicy inRequest:self];
 }
 
 @end
