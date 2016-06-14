@@ -22,13 +22,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NSURLRequest (SRWebSocket)
 
-@property (nonatomic, retain, readonly) id<CertificateVerifier> securityPolicy;
+@property (nonatomic, retain, readonly) id<CertificateVerifier> SR_securityPolicy;
 
 @end
 
 @interface NSMutableURLRequest (SRWebSocket)
 
-@property (nonatomic, retain) id<CertificateVerifier> securityPolicy;
+@property (nonatomic, retain) id<CertificateVerifier> SR_securityPolicy;
 
 @end
 

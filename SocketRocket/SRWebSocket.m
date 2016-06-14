@@ -1387,7 +1387,7 @@ static const size_t SRFrameHeaderOverhead = 32;
 
     if (_secure && !_pinnedCertFound && (eventCode == NSStreamEventHasBytesAvailable || eventCode == NSStreamEventHasSpaceAvailable)) {
 
-        id<CertificateVerifier> verifier = [_urlRequest securityPolicy];
+        id<CertificateVerifier> verifier = [_urlRequest SR_securityPolicy];
         if (!verifier) {
             @throw [NSException exceptionWithName:@"Can't verify WebSocket trust." reason:@"Missing security policy." userInfo:nil];
         }
